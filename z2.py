@@ -1,4 +1,4 @@
-
+# Way too many imports tho
 import sys
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import Vec3
@@ -21,23 +21,15 @@ from panda3d.core import Point3
 from panda3d.core import GraphicsWindow
 from panda3d.core import Filename
 from pandac.PandaModules import *
-
-
-from math import pi, sin, cos
-import numpy as np
-from scipy import misc as misc
-import matplotlib.pyplot as plt
 import png
 
 class Game(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
-        loadPrcFileData('', 'bullet-enable-contact-events true')
 
+        loadPrcFileData('', 'bullet-enable-contact-events true')
         world = BulletWorld()
         self.world = world
-        world.setGravity(Vec3(0, 0, -9.81))
-        base.cam.setPos(0,-50,1)
 
         # Cameras
         base.camNode.setActive(0)
@@ -45,9 +37,8 @@ class Game(ShowBase):
         self.cam2 = base.makeCamera(base.win, displayRegion=(.5,1,0.5,1))
         self.cam1.setPos(-10,-50,1)
         self.cam2.setPos(10,-50,1)
-        # base.camList[0].setPos(0,-100, 1)
 
-        # Plane
+        # Plane ground
         shape = BulletPlaneShape(Vec3(0, 0, 1), 1)
         node = BulletRigidBodyNode('Ground')
         node.addShape(shape)
@@ -56,11 +47,17 @@ class Game(ShowBase):
         self.world.attachRigidBody(node)
         scene = loader.loadModel('Ground2/Ground2')
         scene.reparentTo(render)
+
+        # Repeat every new game
         self.newGame()
 
+        # Repeat tasks every frame
         taskMgr.add(self.update, 'update')
 
     def newGame(self):
+
+        # Instantiates dabba in the world.
+        # Makes it rigid too.
         boxmodel = loader.loadModel("models/box.egg")
         boxmodel.setPos(-0.5, -0.5, -0.5)
         boxmodel.flattenLight()
@@ -76,16 +73,15 @@ class Game(ShowBase):
         self.playerNode = playerNode
         boxmodel.copyTo(playerNP)
 
-        # self.base.cam.reparentTo(playerNP)
-        # base.cam.setPos(0,-10,0)
+
+        # Connects cam to dabba
         self.cam1.reparentTo(playerNP)
         self.cam2.reparentTo(playerNP)
-
         self.cam1.setPos(-1,-10,0)
         self.cam2.setPos( 1,-10,0)
 
-
         base.accept('u',self.up)
+        base.accept('j',self.down)
         base.accept('w',self.forward)
         base.accept('s',self.back)
         base.accept('a',self.rotLeft)
@@ -100,30 +96,33 @@ class Game(ShowBase):
         base.cam.reparentTo(render)
         self.cam1.reparentTo(render)
         self.cam2.reparentTo(render)
-
-
-        print "Tryint to destroy"
         self.world.removeRigidBody(self.playerNP.node())
         render.node().removeChild(self.playerNP.node())
-        print "Reparent camera"
-        print "Destroyed"
         base.ignoreAll()
         self.newGame()
 
     def update(self,task):
         dt = globalClock.getDt()
         self.world.doPhysics(dt)
+
+        # screenshot
+        p = PNMImage()
+        base.win.getScreenshot(p)
+        p.write(Filename("a.jpg"))
+
         return task.cont
 
     def up(self):
-        self.playerNode.applyCentralImpulse(Vec3(0,0,10))
-        print "YO"
+        self.playerNP.setZ(self.playerNP.getZ()+1)
+
+    def down(self):
+        self.playerNP.setZ(self.playerNP.getZ()-1)
 
     def forward(self):
-        self.playerNode.applyCentralImpulse(Vec3(0,5,0))
+        self.playerNP.setY(self.playerNP.getY()+1)
 
     def back(self):
-        self.playerNode.applyCentralImpulse(Vec3(0,-5,0))
+        self.playerNP.setY(self.playerNP.getY()-1)
 
     def rotLeft(self):
         self.playerNode.applyTorqueImpulse(Vec3(0,0,0.05))
@@ -139,6 +138,7 @@ class Game(ShowBase):
 
 
     def onContactAdded(self,node1,node2):
+        print 'touch'
         self.destroyPlayer()
 
 app = Game()
