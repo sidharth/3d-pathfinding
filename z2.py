@@ -21,20 +21,28 @@ from panda3d.core import Point3
 from panda3d.core import GraphicsWindow
 from panda3d.core import Filename
 from pandac.PandaModules import *
-import png
+import numpy as np
+import matplotlib.pyplot as plt
+import Stereo_conv_net_Mac
+
+pred_fn = Stereo_conv_net_Mac.get_pred_fn() 
 
 class Game(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
 
         loadPrcFileData('', 'bullet-enable-contact-events true')
+        loadPrcFileData("", "win-size 300 100")
+        winProp = WindowProperties()
+        winProp.setSize(300,100)
+        base.win.requestProperties(winProp)
         world = BulletWorld()
         self.world = world
 
         # Cameras
         base.camNode.setActive(0)
-        self.cam1 = base.makeCamera(base.win, displayRegion=(0,.5,0.5,1))
-        self.cam2 = base.makeCamera(base.win, displayRegion=(.5,1,0.5,1))
+        self.cam1 = base.makeCamera(base.win, displayRegion=(0,.5,0,1))
+        self.cam2 = base.makeCamera(base.win, displayRegion=(.5,1,0,1))
         self.cam1.setPos(-10,-50,1)
         self.cam2.setPos(10,-50,1)
 
@@ -50,7 +58,8 @@ class Game(ShowBase):
 
         # Repeat every new game
         self.newGame()
-
+        self.skip = True
+        plt.ion()        
         # Repeat tasks every frame
         taskMgr.add(self.update, 'update')
 
@@ -77,8 +86,8 @@ class Game(ShowBase):
         # Connects cam to dabba
         self.cam1.reparentTo(playerNP)
         self.cam2.reparentTo(playerNP)
-        self.cam1.setPos(-1,-10,0)
-        self.cam2.setPos( 1,-10,0)
+        self.cam1.setPos(-0.15,10,0)
+        self.cam2.setPos( 0.15,10,0)
 
         base.accept('u',self.up)
         base.accept('j',self.down)
@@ -104,12 +113,27 @@ class Game(ShowBase):
     def update(self,task):
         dt = globalClock.getDt()
         self.world.doPhysics(dt)
+        if self.skip:
+            self.skip = False
+            return task.cont
 
         # screenshot
-        p = PNMImage()
-        base.win.getScreenshot(p)
-        p.write(Filename("a.jpg"))
+        tex = base.win.getScreenshot()
+        l,r = self.get_camera_image()
+        
+        if(l.shape[0] != 100):
+            return task.cont
+        l = l.reshape(1,1,100,150)
+        r = r.reshape(1,1,100,150)
+        inp = np.concatenate((l,r),axis=1)
+        op  = pred_fn(inp)[0]
+        # print op[0].shape
+        # dim = self.get_camera_depth_image()
+        plt.clf()
+        plt.imshow(op[0,0,...],cmap = plt.get_cmap('gray'))
+        plt.draw()
 
+        # x = raw_input()
         return task.cont
 
     def up(self):
@@ -140,6 +164,44 @@ class Game(ShowBase):
     def onContactAdded(self,node1,node2):
         print 'touch'
         self.destroyPlayer()
+
+    def get_camera_image(self, requested_format=None):
+        """
+        Returns the camera's image, which is of type uint8 and has values
+        between 0 and 255.
+        The 'requested_format' argument should specify in which order the
+        components of the image must be. For example, valid format strings are
+        "RGBA" and "BGRA". By default, Panda's internal format "BGRA" is used,
+        in which case no data is copied over.
+        """
+        tex = base.win.getScreenshot()
+        if requested_format is None:
+            data = tex.getRamImage()
+        else:
+            data = tex.getRamImageAs(requested_format)
+        image = np.frombuffer(data.get_data(), np.uint8)  # use data.get_data() instead of data in python 2
+        image.shape = (tex.getYSize(), tex.getXSize(), tex.getNumComponents())
+        image = np.flipud(image)
+        image = self.rgb2gray(image)
+        # print "lol",image.shape
+        return np.hsplit(image,2)
+
+    def rgb2gray(self,rgb):
+        return np.dot(rgb[...,:3], [  0.114,0.587,0.299])
+
+    def get_camera_depth_image(self):
+        """
+        Returns the camera's depth image, which is of type float32 and has
+        values between 0.0 and 1.0.
+        """
+        data = self.depthTex.getRamImage()
+        depth_image = np.frombuffer(data, np.float32)
+        depth_image.shape = (self.depthTex.getYSize(), self.depthTex.getXSize(), self.depthTex.getNumComponents())
+        depth_image = np.flipud(depth_image)
+        return depth_image
+
+  
+
 
 app = Game()
 app.run()
