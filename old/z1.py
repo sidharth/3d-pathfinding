@@ -37,14 +37,6 @@ class Game(ShowBase):
         world.setGravity(Vec3(0, 0, -9.81))
         base.cam.setPos(0,-50,1)
 
-        # Cameras
-        base.camNode.setActive(0)
-        self.cam1 = base.makeCamera(base.win, displayRegion=(0,.5,0.5,1))
-        self.cam2 = base.makeCamera(base.win, displayRegion=(.5,1,0.5,1))
-        self.cam1.setPos(-10,-50,1)
-        self.cam2.setPos(10,-50,1)
-        # base.camList[0].setPos(0,-100, 1)
-
         # Plane
         shape = BulletPlaneShape(Vec3(0, 0, 1), 1)
         node = BulletRigidBodyNode('Ground')
@@ -73,16 +65,8 @@ class Game(ShowBase):
         self.world.attachRigidBody(playerNP.node())
         self.playerNode = playerNode
         boxmodel.copyTo(playerNP)
-
-        # self.base.cam.reparentTo(playerNP)
-        # base.cam.setPos(0,-10,0)
-        self.cam1.reparentTo(playerNP)
-        self.cam2.reparentTo(playerNP)
-
-        self.cam1.setPos(-1,-10,0)
-        self.cam2.setPos( 1,-10,0)
-
-
+        base.cam.reparentTo(playerNP)
+        base.cam.setPos(0,-10,0)
         base.accept('u',self.up)
         base.accept('w',self.forward)
         base.accept('s',self.back)
@@ -94,12 +78,7 @@ class Game(ShowBase):
 
     def destroyPlayer(self):
         self.playerNP.setPos(0,0,100)
-        
         base.cam.reparentTo(render)
-        self.cam1.reparentTo(render)
-        self.cam2.reparentTo(render)
-
-
         print "Tryint to destroy"
         self.world.removeRigidBody(self.playerNP.node())
         render.node().removeChild(self.playerNP.node())
@@ -138,6 +117,7 @@ class Game(ShowBase):
 
     def onContactAdded(self,node1,node2):
         self.destroyPlayer()
+
 
 app = Game()
 app.run()
