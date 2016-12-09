@@ -33,6 +33,7 @@ class Game(ShowBase):
 
         loadPrcFileData('', 'bullet-enable-contact-events true')
         loadPrcFileData("", "win-size 300 100")
+        loadPrcFileData("", "show-buffers t")
         winProp = WindowProperties()
         winProp.setSize(300,100)
         base.win.requestProperties(winProp)
@@ -60,8 +61,11 @@ class Game(ShowBase):
         self.newGame()
         self.skip = True
         plt.ion()        
+        plt.figure(figsize=(2,3))
         # Repeat tasks every frame
         taskMgr.add(self.update, 'update')
+        self.texDepth = Texture()
+        base.win.addRenderTexture(self.texDepth, GraphicsOutput.RTMCopyRam, GraphicsOutput.RTPDepthStencil)
 
     def newGame(self):
 
@@ -86,8 +90,8 @@ class Game(ShowBase):
         # Connects cam to dabba
         self.cam1.reparentTo(playerNP)
         self.cam2.reparentTo(playerNP)
-        self.cam1.setPos(-0.15,10,0)
-        self.cam2.setPos( 0.15,10,0)
+        self.cam1.setPos(1-0.12,-10,0)
+        self.cam2.setPos( 1+0.12,-10,0)
 
         base.accept('u',self.up)
         base.accept('j',self.down)
@@ -118,7 +122,6 @@ class Game(ShowBase):
             return task.cont
 
         # screenshot
-        tex = base.win.getScreenshot()
         l,r = self.get_camera_image()
         
         if(l.shape[0] != 100):
@@ -130,7 +133,7 @@ class Game(ShowBase):
         # print op[0].shape
         # dim = self.get_camera_depth_image()
         plt.clf()
-        plt.imshow(op[0,0,...],cmap = plt.get_cmap('gray'))
+        plt.imshow(op[0,0,...])
         plt.draw()
 
         # x = raw_input()
@@ -194,10 +197,12 @@ class Game(ShowBase):
         Returns the camera's depth image, which is of type float32 and has
         values between 0.0 and 1.0.
         """
-        data = self.depthTex.getRamImage()
+
+        data = self.texDepth.getRamImage().get_data()
         depth_image = np.frombuffer(data, np.float32)
-        depth_image.shape = (self.depthTex.getYSize(), self.depthTex.getXSize(), self.depthTex.getNumComponents())
+        depth_image.shape = (self.texDepth.getYSize(), self.texDepth.getXSize())
         depth_image = np.flipud(depth_image)
+        print depth_image.shape
         return depth_image
 
   
