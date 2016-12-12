@@ -23,9 +23,11 @@ from panda3d.core import Filename
 from pandac.PandaModules import *
 import numpy as np
 import matplotlib.pyplot as plt
-import Stereo_conv_net_Mac
+import Stereo_conv_net_Mac as stc
 
-pred_fn = Stereo_conv_net_Mac.get_pred_fn() 
+pred_fn = stc.get_pred_fn() 
+offset,scale,y_offset,y_scale = stc.get_offset()
+
 
 class Game(ShowBase):
     def __init__(self):
@@ -57,6 +59,14 @@ class Game(ShowBase):
         scene = loader.loadModel('Ground2/Ground2')
         scene.reparentTo(render)
 
+        plight = PointLight('plight')
+        plnp = render.attachNewNode(plight)
+        plnp.setPos(100,0,1000)
+        render.setLight(plnp)
+        plight2 = PointLight('plight2')
+        plnp2 = render.attachNewNode(plight2)
+        plnp2.setPos(-100,0,1000)
+        render.setLight(plnp2)
         # Repeat every new game
         self.newGame()
         self.skip = True
@@ -71,7 +81,7 @@ class Game(ShowBase):
 
         # Instantiates dabba in the world.
         # Makes it rigid too.
-        boxmodel = loader.loadModel("models/box.egg")
+        boxmodel = loader.loadModel("models/misc/rgbCube.egg")
         boxmodel.setPos(-0.5, -0.5, -0.5)
         boxmodel.flattenLight()
         shape3 = BulletBoxShape(Vec3(0.5,0.5,0.5))
@@ -90,8 +100,8 @@ class Game(ShowBase):
         # Connects cam to dabba
         self.cam1.reparentTo(playerNP)
         self.cam2.reparentTo(playerNP)
-        self.cam1.setPos(1-0.12,-10,0)
-        self.cam2.setPos( 1+0.12,-10,0)
+        self.cam1.setPos(1-0.7,-12,0)
+        self.cam2.setPos( 1+0.7,-12,0)
 
         base.accept('u',self.up)
         base.accept('j',self.down)
@@ -129,6 +139,7 @@ class Game(ShowBase):
         l = l.reshape(1,1,100,150)
         r = r.reshape(1,1,100,150)
         inp = np.concatenate((l,r),axis=1)
+        inp = (inp-offset)/scale
         op  = pred_fn(inp)[0]
         # print op[0].shape
         # dim = self.get_camera_depth_image()

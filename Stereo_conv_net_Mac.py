@@ -44,7 +44,10 @@ from scipy.optimize import minimize
 from math import floor
 print 'hello'
 
-
+g_offset = None
+g_scale = None
+g_offset_y = None
+g_scale_y  = None
 # In[2]:
 
 def load_StereoImages(dirpath='/home/tanuj/Desktop/major/notebook/Dataset'):
@@ -97,29 +100,35 @@ def load_StereoImages(dirpath='/home/tanuj/Desktop/major/notebook/Dataset'):
     X_right_valid = X_right[ii[:floor(len(X_right)*0.1)]]
     y_valid = y[ii[:floor(len(X)*0.1)]]
     
+    global g_offset,g_scale,g_offset_y,g_scale_y
+
     # normalize to zero mean and unity variance
     offset = np.mean(X_train, 0)
     scale = np.std(X_train, 0).clip(min=1)
-    
+    g_offset = offset
+    g_scale = g_scale
+
     y_offset = np.mean(y_train, 0)
     y_scale = y_train.max()
-    
+    g_offset_y = y_offset
+    g_scale_y = y_scale
+
     offset_left = np.mean(X_left_train, 0)
     scale_left = np.std(X_left_train, 0).clip(min=1)
     offset_right = np.mean(X_right_train, 0)
     scale_right = np.std(X_right_train, 0).clip(min=1)
     
-    X_train = (X_train - offset) / scale
-    X_valid = (X_valid - offset) / scale
+    # X_train = (X_train - offset) / scale
+    # X_valid = (X_valid - offset) / scale
     
-    X_left_train = (X_left_train - offset_left) / scale_left
-    X_right_train = (X_right_train - offset_right) / scale_right
+    # X_left_train = (X_left_train - offset_left) / scale_left
+    # X_right_train = (X_right_train - offset_right) / scale_right
 
-    X_left_valid = (X_left_valid - offset_left) / scale_left
-    X_right_valid = (X_right_valid - offset_right) / scale_right
+    # X_left_valid = (X_left_valid - offset_left) / scale_left
+    # X_right_valid = (X_right_valid - offset_right) / scale_right
     
-    y_train = y_train/y_scale
-    y_valid = y_valid/y_scale
+    # y_train = y_train/y_scale
+    # y_valid = y_valid/y_scale
     
     
     return X_train,X_left_train,X_right_train, y_train, X_valid,X_left_valid,X_right_valid, y_valid
@@ -411,6 +420,15 @@ def get_pred_fn():
     test_prediction = lasagne.layers.get_output(network, deterministic=True)
     pred_fn = theano.function([input_var], [test_prediction])
     return pred_fn
+
+def get_offset():
+    offset = np.mean(X_train, 0)
+    scale = np.std(X_train, 0).clip(min=1)
+
+    y_offset = np.mean(y_train, 0)
+    y_scale = y_train.max()
+
+    return offset,scale,y_offset,y_scale
 
 # In[13]:
 
